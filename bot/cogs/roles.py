@@ -1,6 +1,12 @@
 import discord
 from discord.ext import commands
 
+class SurveyModal(discord.ui.Modal, title='Survey'):
+    name = discord.ui.TextInput(label="Name", placeholder='Timi')
+    answer = discord.ui.TextInput(label="Reason for joining", placeholder='I love team Blue!', style=discord.TextStyle.paragraph)
+    async def on_submit(self, interaction):
+        await interaction.response.send_message(f'Submission recieved.', ephemeral=True)
+
 
 class Select(discord.ui.Select):
     def __init__(self):
@@ -16,16 +22,13 @@ class Select(discord.ui.Select):
         guild = interaction.guild
         if self.values[0] == 'Blue':
             role = await guild.create_role(name='Blue', color=discord.Color.blue())
-            await user.edit(roles=[role])
-            await interaction.response.send_message('Team Blue!', ephemeral=True)
         elif self.values[0] == 'Red':
             role = await guild.create_role(name='Red', color=discord.Color.red())
-            await user.edit(roles=[role])
-            await interaction.response.send_message('Team Red!', ephemeral=False)
         elif self.values[0] == 'Green':
             role = await guild.create_role(name='Green', color=discord.Color.green())
-            await user.edit(roles=[role])
-            await interaction.response.send_message('Team Green!', ephemeral=True)
+
+        await user.edit(roles=[role])
+        await interaction.response.send_modal(SurveyModal())
 
 class SelectView(discord.ui.View):
     def __init__(self, *, timeout=30):
@@ -42,7 +45,7 @@ class Role(commands.Cog):
 
     @commands.command()
     async def role(self, ctx):
-        await ctx.send('Select your team:', view=SelectView(), delete_after=10
+        await ctx.send('Select your team:', view=SelectView(), delete_after=10)
 
 async def setup(bot):
     await bot.add_cog(Role(bot))
