@@ -1,20 +1,39 @@
 import discord
 import config
 import asyncio
+import requests
+
+# Importing the commands extension
+from discord.ext import commands
 
 intents = discord.Intents.default()
 intents.message_content = True
-client = discord.Client(intents=intents)
+bot = commands.Bot(command_prefix='.', intents=intents)
 
-@client.event
+@bot.command()
+async def facts(ctx, number):
+    response = requests.get(f"http://numbersapi.com/{number}")
+    await ctx.channel.send(response.text)
+
+@bot.event
 async def on_ready():
     print('Bot is Online.')
 
-@client.event
+@bot.event
 async def on_message(message):
-    if message.author == client.user:
+    # Process commands first
+    await bot.process_commands(message)
+
+    # If the message follows the command format, ignore it
+    if message.content.startswith('.'):
         return
-    if message.content.startswith('!hello'):
+    
+    # If the message was sent by the bot itself, ignore it
+    if message.author == bot.user:
+        return
+    
+    # If the message starts with 'hello', respond with a greeting
+    if message.content.startswith('hello'):
         await message.channel.send('Hello friend!')
 
 async def setup():
@@ -22,6 +41,6 @@ async def setup():
 
 async def main():
     await setup()
-    await client.start(config.TOKEN)
+    await bot.start(config.TOKEN)
 
 asyncio.run(main())
