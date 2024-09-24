@@ -1,7 +1,7 @@
 import discord
 import config
 import asyncio
-import requests
+import os
 
 # Importing the commands extension
 from discord.ext import commands
@@ -10,13 +10,9 @@ intents = discord.Intents.default()
 intents.message_content = True
 bot = commands.Bot(command_prefix='.', intents=intents)
 
-@bot.command()
-async def facts(ctx, number):
-    response = requests.get(f"http://numbersapi.com/{number}")
-    await ctx.channel.send(response.text)
-
 @bot.event
 async def on_ready():
+    # On ready, print that the bot is online
     print('Bot is Online.')
 
 @bot.event
@@ -36,8 +32,18 @@ async def on_message(message):
     if message.content.startswith('hello'):
         await message.channel.send('Hello friend!')
 
+async def load():
+    for file in os.listdir('./cogs'):
+        if file.endswith('.py'):
+            await bot.load_extension(f'cogs.{file[:-3]}')
+
 async def setup():
+    # Perform any setup tasks here
     print('Setting up...')
+
+    # Load the cogs
+    print('Loading cogs...')
+    await load()
 
 async def main():
     await setup()
