@@ -36,7 +36,7 @@ async def load():
     # Load the cogs from the cogs folder
     for file in os.listdir('./cogs'):
         # Check if the file is a python file
-        if file.endswith('.py'):
+        if file.endswith('music.py'): # Load only the music cog (change to .py to load all cogs)
             # Load the cog
             await bot.load_extension(f'cogs.{file[:-3]}')
 
