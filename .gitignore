@@ -2,3 +2,4 @@ env/*
 bot/config.py
 bot/__pycache__/*
 bot/cogs/__pycache__/*
+bot/info.txt
