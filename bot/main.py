@@ -33,8 +33,11 @@ async def on_message(message):
         await message.channel.send('Hello friend!')
 
 async def load():
+    # Load the cogs from the cogs folder
     for file in os.listdir('./cogs'):
+        # Check if the file is a python file
         if file.endswith('.py'):
+            # Load the cog
             await bot.load_extension(f'cogs.{file[:-3]}')
 
 async def setup():
@@ -46,7 +49,11 @@ async def setup():
     await load()
 
 async def main():
+    # Call setup
     await setup()
+
+    # Start the bot
     await bot.start(config.TOKEN)
 
+# Initiate the main sequence
 asyncio.run(main())
