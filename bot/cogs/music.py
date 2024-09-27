@@ -1,7 +1,7 @@
 import discord
 import config
 from discord.ext import commands
-from youtube_dl import YoutubeDL
+import yt_dlp
 
 class Music(commands.Cog):
     def __init__(self, bot):
@@ -12,15 +12,31 @@ class Music(commands.Cog):
 
         # 2D array [song, channel]
         self.queue = []
-        self.YDL_OPTIONS = {'format': 'bestaudio/best', 'noplaylist': 'True'}
-        self.FFMPEG_OPTIONS = {'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5',
-                               'options': '-vn'}
+        self.yt_dl_options = {"format": "bestaudio/best"}
+        self.ytdl = yt_dlp.YoutubeDL(self.yt_dl_options)
+
+        self.ffmpeg_options = {'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5','options': '-vn -filter:a "volume=0.25"'}
         
         self.vc = None
 
+    # Listen for the on_ready event
+    @commands.Cog.listener()
+    async def on_ready(self):
+        print('Music cog loaded.')
+        await self.check_voice_clients()
+
+    async def check_voice_clients(self):
+        for guild in self.bot.guilds:
+            if guild.voice_client:
+                self.vc = guild.voice_client
+                print(f'Bot is connected to a voice channel in guild: {guild.name}')
+                break
+        else:
+            print('Bot is not connected to any voice channels.')
+
     # Search the song on youtube
     def search_yt(self, item):
-        with YoutubeDL(self.YDL_OPTIONS) as ydl:
+        with yt_dlp.YoutubeDL(self.yt_dl_options) as ydl:
             try:
                 info = ydl.extract_info(f"ytsearch:{item}", download=False)['entries'][0]
             except Exception:
@@ -47,30 +63,37 @@ class Music(commands.Cog):
 
     # Infinite loop checker
     async def check_queue(self):
+        print('Checking queue')
         if len(self.queue) > 0:
+            print('Queue is not empty')
             # Mark the bot as playing
             self.isPlaying = True
 
             # Get the url of the song
             url = self.queue[0][0]['source']
 
+            print(url)
             # Try to connect to the voice channel if the bot is not already connected
             if not self.vc or not self.vc.is_connected():
+                print('Connecting to voice channel')
                 self.vc = await self.queue[0][1].connect()
             else:
-                await self.vc.move_to(self.queue[0][1])
+                print('Moving to voice channel')
+                self.vc = await self.vc.move_to(self.queue[0][1])
 
-            print(self.music_queue)
+            print('Queue', self.queue)
             #  Pop the song from the queue
             self.queue.pop(0)
 
             # Play the song
-            self.vc.play(discord.FFmpegPCMAudio(url, **self.FFMPEG_OPTIONS), after=lambda e: self.play_next())
+            print('Playing song in', self.vc)
+            self.vc.play(discord.FFmpegOpusAudio(url, **self.ffmpeg_options), after=lambda e: self.play_next())
         else:
             self.isPlaying = False
 
     @commands.command(name='play', help='Plays a selected song from Youtube')
     async def p(self, ctx, *args):
+        print('I am actually in this file!')
         query = ' '.join(args)
 
         voice_channel = discord.utils.get(ctx.guild.voice_channels, name='general')
@@ -108,6 +131,7 @@ class Music(commands.Cog):
 
     @commands.command(name='leave', help='Leaves the voice channel')
     async def leave(self, ctx):
+        print('Leaving voice channel', self.vc)
         if self.vc:
             # Disconnect from the voice channel
             await self.vc.disconnect()
