@@ -1,7 +1,8 @@
 import discord
 import config
+import asyncio
+import yt_dlp
 from discord.ext import commands
-from youtube_dl import YoutubeDL
 
 class Music(commands.Cog):
     def __init__(self, bot):
