@@ -17,20 +17,16 @@ async def on_ready():
 
 @bot.event
 async def on_message(message):
-    # Process commands first
-    await bot.process_commands(message)
-
-    # If the message follows the command format, ignore it
+    # If the message follows the command format, delete the message
     if message.content.startswith('.'):
-        return
+        await message.delete()
     
     # If the message was sent by the bot itself, ignore it
-    if message.author == bot.user:
+    elif message.author == bot.user:
         return
-    
-    # If the message starts with 'hello', respond with a greeting
-    if message.content.startswith('hello'):
-        await message.channel.send('Hello friend!')
+
+    # Process commands first
+    await bot.process_commands(message)
 
 async def load():
     # Load the cogs from the cogs folder

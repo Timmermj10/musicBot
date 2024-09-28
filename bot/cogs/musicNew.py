@@ -17,39 +17,58 @@ class Music(commands.Cog):
 
     async def play_next(self, ctx):
         if self.queues[ctx.guild.id] != []:
-            link = self.queues[ctx.guild.id].pop(0)
-
-            await self.play(ctx, link)
-
+            player, title = self.queues[ctx.guild.id].pop(0)
+            
+            await ctx.send(f'Playing {title}')
+            await self.play_song(ctx, player)
+    
+    async def play_song(self, ctx, player):
+        self.voice_clients[ctx.guild.id].play(player, after=lambda e: asyncio.run(self.play_next(ctx)))
+    
     async def find251(self, formats):
         for format in formats:
             # print(format['format_id'])
             if format['format_id'] == '251':
                 return format
 
+    async def search_yt(self, ctx, query):
+        await ctx.send('Searching for song...')
+        loop = asyncio.get_event_loop()
+        data = await loop.run_in_executor(None, lambda: self.ytdl.extract_info(f"ytsearch:{query} + official", download=False)['entries'][0])
+        format_251 = await self.find251(data['formats'])
+
+        song = format_251['url']
+
+        player = discord.FFmpegOpusAudio(song, **self.ffmpeg_options)
+
+        return player, data['title']
+
+    async def connect_voice(self, ctx):
+        if not self.voice_clients or voice_client.guild.id not in self.voice_clients:
+            voice_client = await ctx.author.voice.channel.connect()
+            self.voice_clients[voice_client.guild.id] = voice_client
+            return
 
     @commands.command(name='play', help='Plays a selected song from Youtube')
     async def play(self, ctx, *args):
-        try:
-            voice_client = await ctx.author.voice.channel.connect()
-            self.voice_clients[voice_client.guild.id] = voice_client
-        except Exception as e:
-            print(e)
+        # Check if the user passed in any arguments
+        if args == ():
+            if ctx.guild.id in self.queues and len(self.queues[ctx.guild.id]) > 0:
+                # Connect the bot to the voice channel
+                await self.connect_voice(ctx)
+                await self.play_next(ctx)
+            else:
+                await ctx.send('Please provide a song to play.')
+            return
 
         try:
-            query = ' '.join(args)
+            player, title = await self.search_yt(ctx, ' '.join(args))
 
-            loop = asyncio.get_event_loop()
-            data = await loop.run_in_executor(None, lambda: self.ytdl.extract_info(f"ytsearch:{query}", download=False)['entries'][0])
-            print("Data:", data['formats'])
-            format_251 = await self.find251(data['formats'])
-            # print("Format 251:", format_251)
-            song = format_251['url']
-            # song = data['url']
-            # print("Song", song)
+            await ctx.send(f'Playing {title}')
 
-            player = discord.FFmpegOpusAudio(song, **self.ffmpeg_options)
-
+            # Connect the bot to the voice channel
+            await self.connect_voice(ctx)
+        
             self.voice_clients[ctx.guild.id].play(player, after=lambda e: asyncio.run(self.play_next(ctx)))
         except Exception as e:
             print(e)
@@ -81,9 +100,11 @@ class Music(commands.Cog):
     async def queue(self, ctx, *args):
         if ctx.guild.id not in self.queues:
             self.queues[ctx.guild.id] = []
-        query = ' '.join(args)
-        self.queues[ctx.guild.id].append(query)
-        await ctx.send(f'Added {query} to the queue.')
+        
+        # Get the player and title of the song and add it to the queue
+        player, title = await self.search_yt(ctx, ' '.join(args))
+        self.queues[ctx.guild.id].append((player, title))
+        await ctx.send(f'Added {title} to the queue.')
 
     @commands.command(name='skip', help='Skips the current song')
     async def skip(self, ctx):
