@@ -53,6 +53,11 @@ class Music(commands.Cog):
             return True
         return True
 
+    # Listen for the on_ready event
+    @commands.Cog.listener()
+    async def on_ready(self):
+        print('Music cog loaded.')
+
     @commands.command(name='play', help='Plays a selected song from Youtube')
     async def play(self, ctx, *args):
         # Check if the user passed in any arguments
@@ -144,7 +149,18 @@ class Music(commands.Cog):
         else:
             await ctx.send('Nothing in Queue.')
 
+    # Command to view the queue
+    @commands.command(name='view', help='View the current queue')
+    async def view(self, ctx):
+        if ctx.guild.id in self.queues and len(self.queues[ctx.guild.id]) > 0:
+            queue = ''
+            for i, (player, title) in enumerate(self.queues[ctx.guild.id]):
+                queue += f'{i + 1}. {title}\n'
+            await ctx.send(queue)
+        else:
+            await ctx.send('No songs in queue.')
 
+# Add the cog to the bot
 async def setup(bot):
     # Pass the GUILD_ID (Server ID) to the question cog to be used in the ctx.guild parameter)
-    await bot.add_cog(Music(bot), guilds=[discord.Object(id=config.GUILD_ID)])
+    await bot.add_cog(Music(bot))
