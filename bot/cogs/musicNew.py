@@ -44,10 +44,14 @@ class Music(commands.Cog):
         return player, data['title']
 
     async def connect_voice(self, ctx):
-        if not self.voice_clients or voice_client.guild.id not in self.voice_clients:
+        if ctx.author.voice is None:
+            await ctx.send('You are not in a voice channel.')
+            return False
+        if not self.voice_clients or ctx.guild.id not in self.voice_clients:
             voice_client = await ctx.author.voice.channel.connect()
             self.voice_clients[voice_client.guild.id] = voice_client
-            return
+            return True
+        return True
 
     @commands.command(name='play', help='Plays a selected song from Youtube')
     async def play(self, ctx, *args):
@@ -55,19 +59,21 @@ class Music(commands.Cog):
         if args == ():
             if ctx.guild.id in self.queues and len(self.queues[ctx.guild.id]) > 0:
                 # Connect the bot to the voice channel
-                await self.connect_voice(ctx)
-                await self.play_next(ctx)
+                connection = await self.connect_voice(ctx)
+                if connection:
+                    await self.play_next(ctx)
             else:
                 await ctx.send('Please provide a song to play.')
             return
 
         try:
+            # Connect the bot to the voice channel
+            connection = await self.connect_voice(ctx)
+            if not connection:
+                return
             player, title = await self.search_yt(ctx, ' '.join(args))
 
             await ctx.send(f'Playing {title}')
-
-            # Connect the bot to the voice channel
-            await self.connect_voice(ctx)
         
             self.voice_clients[ctx.guild.id].play(player, after=lambda e: asyncio.run(self.play_next(ctx)))
         except Exception as e:
