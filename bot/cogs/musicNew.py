@@ -10,7 +10,7 @@ class Music(commands.Cog):
 
         self.queues = {}
         self.voice_clients = {}
-        self.yt_dl_options = {"format": "bestaudio/best", "noplaylist": True, "verbose": True}
+        self.yt_dl_options = {"format": "bestaudio/best", "noplaylist": True, "quiet": True} # "verbose": True
         self.ytdl = yt_dlp.YoutubeDL(self.yt_dl_options)
 
         self.ffmpeg_options = {'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5','options': '-vn -filter:a "volume=0.25"'}
@@ -81,6 +81,9 @@ class Music(commands.Cog):
 
     @commands.command(name='pause', help='Pauses the current song')
     async def pause(self, ctx):
+        if ctx.guild.id not in self.voice_clients or not self.voice_clients[ctx.guild.id].is_playing():
+            await ctx.send('Not currently playing anything.')
+            return
         try:
             self.voice_clients[ctx.guild.id].pause()
         except Exception as e:
@@ -88,6 +91,9 @@ class Music(commands.Cog):
 
     @commands.command(name='resume', help='Resumes the current song')
     async def resume(self, ctx):
+        if ctx.guild.id not in self.voice_clients or not self.voice_clients[ctx.guild.id].is_paused():
+            await ctx.send('Not currently paused.')
+            return
         try:
             self.voice_clients[ctx.guild.id].resume()
         except Exception as e:
@@ -114,15 +120,25 @@ class Music(commands.Cog):
 
     @commands.command(name='skip', help='Skips the current song')
     async def skip(self, ctx):
-        self.voice_clients[ctx.guild.id].stop()
-        if ctx.guild.id in self.queues and len(self.queues[ctx.guild.id]) > 0:
+        # If there is no voice client associate or we are not playing anything
+        if ctx.guild.id not in self.voice_clients or not self.voice_clients[ctx.guild.id].is_playing():
+            await ctx.send('Not currently playing anything.')
+            return
+        
+        # If there is a voice client associate, we are playing something, and there are no songs in the queue
+        if self.voice_clients[ctx.guild.id].is_playing() and (ctx.guild.id not in self.queues or len(self.queues[ctx.guild.id]) == 0):
+            self.voice_clients[ctx.guild.id].stop()
+            await ctx.send('No songs in queue.')
+            return
+
+        # If there is a voice client associate, we are playing something, and there are songs in the queue
+        if self.voice_clients[ctx.guild.id].is_playing():
+            self.voice_clients[ctx.guild.id].stop()
             await self.play_next(ctx)
-        else:
-            await ctx.send('No more songs in queue.')
 
     @commands.command(name='clear', help='Clears the current queue')
     async def clear(self, ctx):
-        if ctx.guild.id in self.queues:
+        if ctx.guild.id in self.queues and len(self.queues[ctx.guild.id]) > 0:
             self.queues[ctx.guild.id].clear()
             await ctx.send('Queue cleared.')
         else:
